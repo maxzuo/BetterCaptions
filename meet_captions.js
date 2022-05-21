@@ -1,6 +1,10 @@
 const CAPTION_XPATH = "/html/body/div[1]/c-wiz/div[1]/div/div[9]/div[3]/div[7]/div[1]/div[1]"
+const CAPTION_SELECTOR = "c-wiz div[jsname='dsyhDe']"
 const CAPTION_BUTTON_XPATH = "/html/body/div[1]/c-wiz/div[1]/div/div[9]/div[3]/div[10]/div[2]/div/div[3]/span/button/div[1]"
+const CAPTION_BUTTON_SELECTOR = "c-wiz div[j-sname='s3Eaab']"
 const VIDEO_XPATH = "/html/body/div[1]/c-wiz/div[1]/div/div[9]/div[3]/div[2]/div[1]"
+// const VIDEO_SELECTOR = "c-wiz div[jsname='Nl0j0e']"
+const VIDEO_SELECTOR = "c-wiz div[jsname='E2KThb']"
 const MEETING_SELECTOR = "c-wiz" // Doesn't work
 
 const $xp = xp => {
@@ -20,7 +24,9 @@ const $xp = xp => {
     meeting_observer: new MutationObserver(function(mutationsList, observer) {
       if (APP.in_meeting()) {
         console.log("in a meeting")
-        APP.caption_observer.observe($xp(CAPTION_XPATH), {subtree:true, characterData:true, attributes:true}) // add attributes:true later if need be.
+        document.querySelector(CAPTION_SELECTOR).style.visibility = 'hidden'
+        // APP.caption_observer.observe($xp(CAPTION_XPATH), {subtree:true, characterData:true, attributes:true}) // add attributes:true later if need be.
+        APP.caption_observer.observe(document.querySelector(CAPTION_SELECTOR), {subtree:true, characterData:true, attributes:true}) // add attributes:true later if need be.
       } else {
         console.log("not in a meeting")
         APP.caption_observer.disconnect();
@@ -28,7 +34,8 @@ const $xp = xp => {
       }
     }),
     caption_observer: new MutationObserver(function(mutationsList, observer) {
-      const caption_elems = $xp(CAPTION_XPATH).children
+      // const caption_elems = $xp(CAPTION_XPATH).children
+      const caption_elems = document.querySelector(CAPTION_SELECTOR).children
       const video_elems = APP.get_videos()
       const prev_captions_on = APP.captions_on
 
@@ -41,13 +48,15 @@ const $xp = xp => {
           video_element.querySelector(`#${name.replaceAll(' ', '\\ ')}_captions`).remove()
         }
       } else if (!prev_captions_on && captions_on) { // captions turned on
-        console.log(Object.values(video_elems))
+        console.log("making captions_location", Object.values(video_elems))
         for (let {name, video_element} of Object.values(video_elems)) {
           const caption_div = document.createElement('div')
           caption_div.id = `${name}_captions`
           caption_div.style.position = 'fixed'
+          caption_div.style.bottom = '0'
           caption_div.style.zIndex = '10000000'
-          video_element.prepend(caption_div)
+          video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
+          console.log("THIS IS IMPORTANT", video_element)
         }
         // kill all caption elements
       }
@@ -56,8 +65,8 @@ const $xp = xp => {
         captions_on = true
         // console.log(caption.innerHTML)
         let [name_elem, content_elem] = caption_elem.querySelectorAll("div")
-        let name = name_elem.innerText // not needed: use identifying image source! (for people who have the same name)
-        let caption_content = content_elem.innerText
+        let name = name_elem.textContent // not needed: use identifying image source! (for people who have the same name)
+        let caption_content = content_elem.textContent
         let img_src = caption_elem.querySelector('img').src
 
         img_src = img_src.slice(0,img_src.indexOf("="))
@@ -87,11 +96,16 @@ const $xp = xp => {
       APP.meeting_observer.observe(document.querySelector(MEETING_SELECTOR), {attributes:true, childList:true})
     },
     in_meeting: () => {
-      return $xp(CAPTION_BUTTON_XPATH) !== null
+      // return $xp(CAPTION_BUTTON_XPATH) !== null
+      return document.querySelector(VIDEO_SELECTOR) !== null
     },
     get_videos: () => {
+      /*
       const img_elements = Array.from($xp(VIDEO_XPATH).querySelectorAll("img"))
       let video_elements = img_elements.map((el) => el.parentElement.parentElement.parentElement)
+      */
+      const video_elements = Array.from(document.querySelectorAll(VIDEO_SELECTOR))
+      const img_elements = video_elements.map((el) => el.querySelector("img"))
       let video_names = video_elements.map(el => {
         const name_element = el.querySelector('[data-self-name="You"]') // This seems like a bug that might get patched in the future
         return (name_element) ? name_element.innerText : "You"
