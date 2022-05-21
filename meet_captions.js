@@ -45,16 +45,20 @@ const $xp = xp => {
 
       if (prev_captions_on && !captions_on) { // captions turned off
         for (let {name, video_element} of Object.values(video_elems)) {
-          video_element.querySelector(`#${name.replaceAll(' ', '\\ ')}_captions`).remove()
+          // video_element.querySelector(`#${name.replaceAll(' ', '\\ ')}_captions`).remove()
+          video_element.querySelector(`.smart_captions`).remove()
         }
       } else if (!prev_captions_on && captions_on) { // captions turned on
         console.log("making captions_location", Object.values(video_elems))
         for (let {name, video_element} of Object.values(video_elems)) {
           const caption_div = document.createElement('div')
-          caption_div.id = `${name}_captions`
+          // caption_div.id = `${name}_captions`
+          caption_div.className = caption_div.className + " smart_captions"
           caption_div.style.position = 'fixed'
           caption_div.style.bottom = '0'
           caption_div.style.zIndex = '10000000'
+          caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
+          caption_div.style.borderRadius = "2rem"
           video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
           console.log("THIS IS IMPORTANT", video_element)
         }
@@ -66,12 +70,16 @@ const $xp = xp => {
         // console.log(caption.innerHTML)
         let [name_elem, content_elem] = caption_elem.querySelectorAll("div")
         let name = name_elem.textContent // not needed: use identifying image source! (for people who have the same name)
+        if (name.endsWith(" (Presentation)")) {
+          name = name.slice(0, name.lastIndexOf(" (Presentation)"))
+        }
         let caption_content = content_elem.textContent
         let img_src = caption_elem.querySelector('img').src
 
         img_src = img_src.slice(0,img_src.indexOf("="))
 
         console.log("CAPTION ", name, ":", caption_content)
+        console.log(caption_elem)
         console.log(img_src)
         captions[JSON.stringify({img_src, name})] = {name, caption_content, caption_elem}
       }
@@ -84,9 +92,24 @@ const $xp = xp => {
         if (res) {
           let {_, video_element} = res
           console.log(video_element, caption_elem)
-          let caption_holder_div = video_element.querySelector(`div#${name.replaceAll(' ', '\\ ')}_captions`)
+          // let caption_holder_div = video_element.querySelector(`div#${name.replaceAll(' ', '\\ ')}_captions`)
+          caption_holder_div = video_element.querySelector("div.smart_captions")
           // caption_holder_div.firstChild().remove()
-          caption_holder_div.replaceChildren(caption_elem.cloneNode(true))
+          try {
+            caption_holder_div.replaceChildren(caption_elem.cloneNode(true))
+          } catch (error) {
+          const caption_div = document.createElement('div')
+          // caption_div.id = `${name}_captions`
+          caption_div.className = caption_div.className + " smart_captions"
+          caption_div.style.position = 'fixed'
+          caption_div.style.bottom = '0'
+          caption_div.style.zIndex = '10000000'
+          caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
+          caption_div.style.borderRadius = "2rem"
+          video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
+
+          caption_div.replaceChildren(caption_elem.cloneNode(true))
+          }
         }
       }
 
@@ -108,7 +131,11 @@ const $xp = xp => {
       const img_elements = video_elements.map((el) => el.querySelector("img"))
       let video_names = video_elements.map(el => {
         const name_element = el.querySelector('[data-self-name="You"]') // This seems like a bug that might get patched in the future
-        return (name_element) ? name_element.innerText : "You"
+        let name = (name_element) ? name_element.innerText : "You"
+        if (name.endsWith(" (Presentation)")) {
+          name = name.slice(0, name.lastIndexOf(" (Presentation)"))
+        }
+        return name
       })
 
       let img_urls = img_elements.map(el => {
