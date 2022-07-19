@@ -20,6 +20,19 @@ const $xp = xp => {
 ;(() => {
   let APP = {
     captions_on: false,
+    caption_style: (caption_div) => {
+      caption_div.style.position = "fixed"
+      caption_div.style.bottom = "0"
+      caption_div.style.left = "0"
+      caption_div.style.right = "0"
+      caption_div.style.position = 'relative'
+      caption_div.style.margin = '0 auto'
+      caption_div.style.zIndex = '10000000'
+      caption_div.style.height = "auto"
+      caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
+      caption_div.style.borderRadius = "1rem"
+      caption_div.style.maxWidth = "fit-content"
+    },
     // observing_captions: false,
     meeting_observer: new MutationObserver(function(mutationsList, observer) {
       if (APP.in_meeting()) {
@@ -39,26 +52,32 @@ const $xp = xp => {
       const video_elems = APP.get_videos()
       const prev_captions_on = APP.captions_on
 
-      let captions_on = caption_elems && caption_elems.length
+      let captions_on = !!(caption_elems && caption_elems.length)
 
       let captions = {} // we'll add as "img_url": "text" since img url is identifiable
 
       if (prev_captions_on && !captions_on) { // captions turned off
-        for (let {name, video_element} of Object.values(video_elems)) {
-          // video_element.querySelector(`#${name.replaceAll(' ', '\\ ')}_captions`).remove()
-          video_element.querySelector(`.smart_captions`).remove()
-        }
+        // for (let {name, video_element} of Object.values(video_elems)) {
+        //   // video_element.querySelector(`#${name.replaceAll(' ', '\\ ')}_captions`).remove()
+          try {
+            console.log("should be removing");
+            document.querySelectorAll(".smart_captions").forEach(e => e.remove());
+          } catch (e) {
+            // no smart captions were created
+          }
+        // }
       } else if (!prev_captions_on && captions_on) { // captions turned on
+        // Make caption locations
         console.log("making captions_location", Object.values(video_elems))
         for (let {name, video_element} of Object.values(video_elems)) {
+
+          if (name.endsWith(" (Presentation)")) {
+            name = name.slice(0, name.lastIndexOf(" (Presentation)"))
+          }
+
           const caption_div = document.createElement('div')
-          // caption_div.id = `${name}_captions`
-          caption_div.className = caption_div.className + " smart_captions"
-          caption_div.style.position = 'fixed'
-          caption_div.style.bottom = '0'
-          caption_div.style.zIndex = '10000000'
-          caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
-          caption_div.style.borderRadius = "2rem"
+          caption_div.className = "smart_captions"
+          APP.caption_style(caption_div)
           video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
           console.log("THIS IS IMPORTANT", video_element)
         }
@@ -73,43 +92,52 @@ const $xp = xp => {
         if (name.endsWith(" (Presentation)")) {
           name = name.slice(0, name.lastIndexOf(" (Presentation)"))
         }
+
         let caption_content = content_elem.textContent
         let img_src = caption_elem.querySelector('img').src
 
+        if (caption_content.trim()) {
+          caption_elem.querySelector("div[jsname='YSxPC']").style.maxWidth = "90%"
+        }
+
         img_src = img_src.slice(0,img_src.indexOf("="))
 
-        console.log("CAPTION ", name, ":", caption_content)
-        console.log(caption_elem)
-        console.log(img_src)
-        captions[JSON.stringify({img_src, name})] = {name, caption_content, caption_elem}
+        // Clip content
+        // let words = caption_content.split()
+        // caption_elem.querySelector("div[jsname='tgaKEf']").innerHTML = words.slice(words.length-40).join(' ')
+        // console.log(words.slice(words.length-40).join(' '))
+
+        // console.log("CAPTION ", name, ":", caption_content)
+        // console.log(caption_elem)
+        // console.log(img_src)
+        // NOTE: AHHH
+        // captions[JSON.stringify({img_src, name})] = {name, caption_content, caption_elem}
+        captions[JSON.stringify({name})] = {name, caption_content, caption_elem}
+        // caption_elem.remove()
       }
 
       // add captions to all video elements
       for (const [key, {name, caption_content, caption_elem}] of Object.entries(captions)) {
         const res = video_elems[key]
-        // console.log("res", res)
-        // console.log(key )
         if (res) {
           let {_, video_element} = res
           console.log(video_element, caption_elem)
-          // let caption_holder_div = video_element.querySelector(`div#${name.replaceAll(' ', '\\ ')}_captions`)
           caption_holder_div = video_element.querySelector("div.smart_captions")
-          // caption_holder_div.firstChild().remove()
           try {
             caption_holder_div.replaceChildren(caption_elem.cloneNode(true))
+            console.log("replacing,", caption_elem)
           } catch (error) {
-          const caption_div = document.createElement('div')
-          // caption_div.id = `${name}_captions`
-          caption_div.className = caption_div.className + " smart_captions"
-          caption_div.style.position = 'fixed'
-          caption_div.style.bottom = '0'
-          caption_div.style.zIndex = '10000000'
-          caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
-          caption_div.style.borderRadius = "2rem"
-          video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
+            alert(error)
+            const caption_div = document.createElement('div')
+            APP.caption_style(caption_div)
+            video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
 
-          caption_div.replaceChildren(caption_elem.cloneNode(true))
+            caption_div.replaceChildren(caption_elem.cloneNode(true))
           }
+        } else {
+          console.log("could not match")
+          // console.log(JSON.stringify(captions))
+          // console.log(JSON.stringify(video_elems))
         }
       }
 
@@ -119,14 +147,9 @@ const $xp = xp => {
       APP.meeting_observer.observe(document.querySelector(MEETING_SELECTOR), {attributes:true, childList:true})
     },
     in_meeting: () => {
-      // return $xp(CAPTION_BUTTON_XPATH) !== null
       return document.querySelector(VIDEO_SELECTOR) !== null
     },
     get_videos: () => {
-      /*
-      const img_elements = Array.from($xp(VIDEO_XPATH).querySelectorAll("img"))
-      let video_elements = img_elements.map((el) => el.parentElement.parentElement.parentElement)
-      */
       const video_elements = Array.from(document.querySelectorAll(VIDEO_SELECTOR))
       const img_elements = video_elements.map((el) => el.querySelector("img"))
       let video_names = video_elements.map(el => {
@@ -140,13 +163,13 @@ const $xp = xp => {
 
       let img_urls = img_elements.map(el => {
         let img_src = el.src
+        console.log("error", img_src, img_src.slice(0,img_src.indexOf("=")))
         return img_src.slice(0,img_src.indexOf("="))
       })
       const videos = {}
       for (let i = 0; i < video_elements.length; i++) {
-        videos[JSON.stringify({img_src:img_urls[i], name:video_names[i]})] = {name:video_names[i], video_element:video_elements[i]}
+        videos[JSON.stringify({name:video_names[i]})] = {name:video_names[i], video_element:video_elements[i]}
       }
-      // console.log("VIDEOS", videos)
       return videos;
     }
   }
