@@ -19,7 +19,8 @@
             "matches": [
                 "https://meet.google.com/*"
             ],
-            "js": ["meet_captions.js"]
+            "js": ["meet_captions.js"],
+            "css" : ["smart_captions.css"]
         }
     ],
     "manifest_version": 3

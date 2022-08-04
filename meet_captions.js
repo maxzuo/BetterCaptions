@@ -7,6 +7,8 @@ const VIDEO_XPATH = "/html/body/div[1]/c-wiz/div[1]/div/div[9]/div[3]/div[2]/div
 const VIDEO_SELECTOR = "c-wiz div[jsname='E2KThb']"
 const MEETING_SELECTOR = "c-wiz" // Doesn't work
 
+const MAX_WORDS = 40
+
 const $xp = xp => {
   const snapshot = document.evaluate(
     xp, document, null,
@@ -20,19 +22,6 @@ const $xp = xp => {
 ;(() => {
   let APP = {
     captions_on: false,
-    caption_style: (caption_div) => {
-      caption_div.style.position = "fixed"
-      caption_div.style.bottom = "0"
-      caption_div.style.left = "0"
-      caption_div.style.right = "0"
-      caption_div.style.position = 'relative'
-      caption_div.style.margin = '0 auto'
-      caption_div.style.zIndex = '10000000'
-      caption_div.style.height = "auto"
-      caption_div.style.backgroundColor = "rgba(0, 0, 0, 0.65)"
-      caption_div.style.borderRadius = "1rem"
-      caption_div.style.maxWidth = "fit-content"
-    },
     // observing_captions: false,
     meeting_observer: new MutationObserver(function(mutationsList, observer) {
       if (APP.in_meeting()) {
@@ -77,16 +66,13 @@ const $xp = xp => {
 
           const caption_div = document.createElement('div')
           caption_div.className = "smart_captions"
-          APP.caption_style(caption_div)
           video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
-          console.log("THIS IS IMPORTANT", video_element)
         }
         // kill all caption elements
       }
 
       for (let caption_elem of caption_elems) {
         captions_on = true
-        // console.log(caption.innerHTML)
         let [name_elem, content_elem] = caption_elem.querySelectorAll("div")
         let name = name_elem.textContent // not needed: use identifying image source! (for people who have the same name)
         if (name.endsWith(" (Presentation)")) {
@@ -103,17 +89,13 @@ const $xp = xp => {
         img_src = img_src.slice(0,img_src.indexOf("="))
 
         // Clip content
-        // let words = caption_content.split()
-        // caption_elem.querySelector("div[jsname='tgaKEf']").innerHTML = words.slice(words.length-40).join(' ')
-        // console.log(words.slice(words.length-40).join(' '))
+        let words = caption_content.split(' ')
+        console.log('mzd123', words.length, caption_content)
+        while (words.length > MAX_WORDS) {
+          words = caption_elem.textContent.split(' ')
+        }
 
-        // console.log("CAPTION ", name, ":", caption_content)
-        // console.log(caption_elem)
-        // console.log(img_src)
-        // NOTE: AHHH
-        // captions[JSON.stringify({img_src, name})] = {name, caption_content, caption_elem}
         captions[JSON.stringify({name})] = {name, caption_content, caption_elem}
-        // caption_elem.remove()
       }
 
       // add captions to all video elements
@@ -121,23 +103,29 @@ const $xp = xp => {
         const res = video_elems[key]
         if (res) {
           let {_, video_element} = res
-          console.log(video_element, caption_elem)
-          caption_holder_div = video_element.querySelector("div.smart_captions")
           try {
-            caption_holder_div.replaceChildren(caption_elem.cloneNode(true))
+            caption_holder_div = video_element.querySelector("div.smart_captions")
             console.log("replacing,", caption_elem)
           } catch (error) {
             alert(error)
             const caption_div = document.createElement('div')
-            APP.caption_style(caption_div)
+            caption_div.className += " smart_captions"
             video_element.querySelector("div[jsname='Nl0j0e']").prepend(caption_div)
 
-            caption_div.replaceChildren(caption_elem.cloneNode(true))
+            // caption_div.
+          }
+
+          let smart_captions = video_element.querySelector('div.smart_captions')
+          smart_captions.replaceChildren(caption_elem.cloneNode(true))
+          const parent_thresh = .37 * smart_captions.parentElement.offsetHeight
+          const elem_height = smart_captions.offsetHeight
+          // console.log('mzd remove', elem_height, parent_thresh, Math.round((elem_height - parent_thresh) / parent_thresh + 0.5))
+          if(elem_height > parent_thresh) {
+            caption_elem.querySelectorAll('span')[0].remove()
+            smart_captions.replaceChildren(caption_elem.cloneNode(true))
           }
         } else {
           console.log("could not match")
-          // console.log(JSON.stringify(captions))
-          // console.log(JSON.stringify(video_elems))
         }
       }
 
